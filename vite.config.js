@@ -6,6 +6,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    allowedHosts: [
+      '.serveousercontent.com',
+      '.loca.lt',
+    ],
     proxy: {
       '/api': {
         target: 'http://localhost:8787',
