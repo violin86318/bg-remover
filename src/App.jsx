@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import ImageProcessor from './components/ImageProcessor';
@@ -6,13 +6,37 @@ import Features from './components/Features';
 import HowItWorks from './components/HowItWorks';
 import FAQ from './components/FAQ';
 import Footer from './components/Footer';
+import { loadUser, saveUser, clearUser, saveUserToBackend } from './utils/googleAuth';
 
 export default function App() {
+  const [user, setUser] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [originalPreview, setOriginalPreview] = useState(null);
   const [processedImage, setProcessedImage] = useState(null);
   const [status, setStatus] = useState('idle'); // idle | processing | done | error
   const [error, setError] = useState(null);
+
+  // Load saved user on mount
+  useEffect(() => {
+    const savedUser = loadUser();
+    if (savedUser) setUser(savedUser);
+  }, []);
+
+  const handleLogin = useCallback(async (userData) => {
+    // Upsert user to D1 via API (fire and forget, don't block UI on error)
+    try {
+      await saveUserToBackend(userData);
+    } catch (err) {
+      console.error('Failed to save user to backend:', err);
+    }
+    saveUser(userData);
+    setUser(userData);
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    clearUser();
+    setUser(null);
+  }, []);
 
   const handleFileSelect = useCallback(async (file) => {
     setError(null);
@@ -68,7 +92,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <Header />
+      <Header user={user} onLogin={handleLogin} onLogout={handleLogout} />
       <main>
         <Hero onFileSelect={handleFileSelect} />
 

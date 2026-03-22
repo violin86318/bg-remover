@@ -1,3 +1,8 @@
 name = "bg-remover"
 compatibility_date = "2024-01-01"
 pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "image-background-remover"
+database_id = "f34dca45-43c2-4260-8181-c27347f26d55"
