@@ -156,7 +156,6 @@ export async function onRequestPost(context) {
         break;
       }
 
-      case 'SUBSCRIPTION.ACTIVATED':
       case 'BILLING.SUBSCRIPTION.ACTIVATED': {
         const sub = event.resource;
         const customId = sub?.custom_id;
@@ -167,12 +166,15 @@ export async function onRequestPost(context) {
         break;
       }
 
-      case 'SUBSCRIPTION.EXPIRED':
-      case 'SUBSCRIPTION.CANCELLED':
-      case 'BILLING.SUBSCRIPTION.CANCELLED': {
+      case 'BILLING.SUBSCRIPTION.CANCELLED':
+      case 'BILLING.SUBSCRIPTION.EXPIRED': {
         const sub = event.resource;
-        const email = sub?.subscriber?.email_address;
-        await deactivateSubscription(env, email);
+        // Try custom_id first (contains our stored email), fallback to subscriber field
+        const { email: customEmail } = parseCustomId(sub?.custom_id || '{}');
+        const email = customEmail || sub?.subscriber?.email_address;
+        if (email) {
+          await deactivateSubscription(env, email);
+        }
         break;
       }
 
