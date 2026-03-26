@@ -42,7 +42,13 @@ export default function Header({ user, onLogin, onLogout, onShowHistory }) {
   }, []);
 
   const scrollTo = (id) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+    // If on pricing page, go back to home first
+    if (window.location.hash === '#pricing') {
+      window.location.hash = '';
+      setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }), 100);
+    } else {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   const handleSignInClick = () => {

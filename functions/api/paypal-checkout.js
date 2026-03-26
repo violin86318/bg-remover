@@ -7,8 +7,14 @@
  * Returns: { orderID, approvalUrl }
  */
 
-const PAYPAL_API_BASE = 'https://api-m.sandbox.paypal.com';
-// const PAYPAL_API_BASE = 'https://api-m.paypal.com'; // Production
+// Use PAYPAL_MODE env var to switch between sandbox and live
+// Defaults to sandbox for safety
+function getPayPalApiBase(env) {
+  if (env.PAYPAL_MODE === 'live') {
+    return 'https://api-m.paypal.com';
+  }
+  return 'https://api-m.sandbox.paypal.com';
+}
 
 // Credit packages config (must match Pricing.jsx)
 const CREDIT_PACKAGES = {
@@ -31,9 +37,11 @@ function getPayPalCredentials(env) {
   };
 }
 
-async function getAccessToken(clientId, clientSecret) {
+async function getAccessToken(clientId, clientSecret, paypalApiBase) {
   const auth = btoa(`${clientId}:${clientSecret}`);
-  const response = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
+  console.log(`[PayPal] Attempting auth to ${paypalApiBase}`);
+  console.log(`[PayPal] Client ID prefix: ${clientId.slice(0, 8)}...`);
+  const response = await fetch(`${paypalApiBase}/v1/oauth2/token`, {
     method: 'POST',
     headers: {
       'Authorization': `Basic ${auth}`,
@@ -44,10 +52,12 @@ async function getAccessToken(clientId, clientSecret) {
 
   if (!response.ok) {
     const err = await response.text();
+    console.error(`[PayPal] Auth failed. Status: ${response.status}, Body: ${err}`);
     throw new Error(`PayPal auth failed: ${err}`);
   }
 
   const data = await response.json();
+  console.log(`[PayPal] Auth success`);
   return data.access_token;
 }
 
