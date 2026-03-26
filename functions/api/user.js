@@ -33,20 +33,21 @@ export async function onRequestPost(context) {
 
     // Upsert user: insert or update on conflict
     const result = await env.DB.prepare(`
-      INSERT INTO users (id, email, name, picture, created_at, last_login)
+      INSERT INTO users (id, email, name, picture, created_at, last_login, credits)
       VALUES (
         lower(hex(randomblob(16))),
         ?,
         ?,
         ?,
         ?,
-        ?
+        ?,
+        3  -- new users get 3 free credits
       )
       ON CONFLICT(email) DO UPDATE SET
         name = excluded.name,
         picture = excluded.picture,
         last_login = excluded.last_login
-      RETURNING id, email, name, picture, created_at, last_login
+      RETURNING id, email, name, picture, created_at, last_login, COALESCE(credits, 0) as credits, subscription_type, subscription_expires_at, is_subscription_active
     `).bind(email, name || null, picture || null, now, now).first();
 
     return new Response(
@@ -77,7 +78,7 @@ export async function onRequestGet(context) {
 
   try {
     const user = await env.DB.prepare(
-      'SELECT id, email, name, picture, created_at, last_login FROM users WHERE email = ?'
+      'SELECT id, email, name, picture, created_at, last_login, COALESCE(credits, 0) as credits, subscription_type, subscription_expires_at, is_subscription_active FROM users WHERE email = ?'
     ).bind(email).first();
 
     if (!user) {

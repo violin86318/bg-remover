@@ -1,7 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+// PayPal client ID — replace with your actual PayPal Client ID
+const PAYPAL_CLIENT_ID = 'YOUR_PAYPAL_CLIENT_ID';
 
 const creditPackages = [
   {
+    id: 'starter',
     name: 'Starter',
     price: 4.99,
     credits: 10,
@@ -9,6 +13,7 @@ const creditPackages = [
     popular: false,
   },
   {
+    id: 'popular',
     name: 'Popular',
     price: 12.99,
     credits: 30,
@@ -16,6 +21,7 @@ const creditPackages = [
     popular: true,
   },
   {
+    id: 'pro',
     name: 'Pro Pack',
     price: 29.99,
     credits: 80,
@@ -26,6 +32,7 @@ const creditPackages = [
 
 const subscriptionPlans = [
   {
+    id: 'basic',
     name: 'Basic',
     price: 9.99,
     period: 'month',
@@ -35,6 +42,7 @@ const subscriptionPlans = [
     popular: false,
   },
   {
+    id: 'pro',
     name: 'Pro',
     price: 19.99,
     period: 'month',
@@ -54,11 +62,50 @@ const pricingFaqs = [
   { q: 'Can I upgrade or downgrade my plan?', a: 'Absolutely. You can change your subscription at any time. Upgrades take effect immediately; downgrades apply at the next billing cycle.' },
 ];
 
-export default function Pricing() {
+export default function Pricing({ user }) {
   const [tab, setTab] = useState('credits');
   const [openFaq, setOpenFaq] = useState(null);
+  const [purchasing, setPurchasing] = useState(null); // package key being purchased
+  const [paypalReady, setPaypalReady] = useState(false);
 
   const toggleFaq = (i) => setOpenFaq(openFaq === i ? null : i);
+
+  // Load PayPal script on mount
+  useEffect(() => {
+    if (window.paypal) { setPaypalReady(true); return; }
+    const script = document.createElement('script');
+    script.src = `https://www.paypal.com/sdk/js?client-id=${PAYPAL_CLIENT_ID}&currency=USD`;
+    script.onload = () => setPaypalReady(true);
+    document.head.appendChild(script);
+  }, []);
+
+  const handlePurchase = async (type, packageId) => {
+    if (!user?.email) {
+      alert('Please sign in with Google first to make a purchase.');
+      return;
+    }
+
+    setPurchasing(`${type}_${packageId}`);
+
+    try {
+      const res = await fetch('/api/paypal-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, packageId, email: user.email }),
+      });
+
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || 'Failed to create order');
+
+      // Redirect to PayPal approval URL
+      if (data.approvalUrl) {
+        window.location.href = data.approvalUrl;
+      }
+    } catch (err) {
+      alert(`Purchase failed: ${err.message}`);
+      setPurchasing(null);
+    }
+  };
 
   return (
     <div className="pricing-page">
@@ -115,10 +162,14 @@ export default function Pricing() {
                         </li>
                       ))}
                     </ul>
-                    <button className={`btn btn-lg ${pkg.popular ? 'btn-primary' : 'btn-secondary'} w-full`}>
-                      {pkg.popular ? 'Buy Now' : 'Get Started'}
+                    <button
+                      className={`btn btn-lg ${pkg.popular ? 'btn-primary' : 'btn-secondary'} w-full`}
+                      onClick={() => handlePurchase('credit', pkg.id)}
+                      disabled={purchasing === `${pkg.id}`}
+                    >
+                      {purchasing === `credit_${pkg.id}` ? 'Redirecting...' : pkg.popular ? 'Buy Now' : 'Get Started'}
                     </button>
-                    <p className="plan-cta-hint">Payment coming soon</p>
+                    <p className="plan-cta-hint">PayPal • Secure payment</p>
                   </div>
                 ))}
               </div>
@@ -149,10 +200,14 @@ export default function Pricing() {
                         </li>
                       ))}
                     </ul>
-                    <button className={`btn btn-lg ${plan.popular ? 'btn-primary' : 'btn-secondary'} w-full`}>
-                      {plan.popular ? 'Subscribe Now' : 'Subscribe'}
+                    <button
+                      className={`btn btn-lg ${plan.popular ? 'btn-primary' : 'btn-secondary'} w-full`}
+                      onClick={() => handlePurchase('subscription', plan.id)}
+                      disabled={purchasing === `subscription_${plan.id}`}
+                    >
+                      {purchasing === `subscription_${plan.id}` ? 'Redirecting...' : plan.popular ? 'Subscribe Now' : 'Subscribe'}
                     </button>
-                    <p className="plan-cta-hint">Payment coming soon</p>
+                    <p className="plan-cta-hint">PayPal • Auto-renew monthly</p>
                   </div>
                 ))}
               </div>

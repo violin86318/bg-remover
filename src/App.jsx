@@ -36,14 +36,18 @@ export default function App() {
   }, []);
 
   const handleLogin = useCallback(async (userData) => {
-    // Upsert user to D1 via API (fire and forget, don't block UI on error)
+    // Upsert user to D1 via API and get updated user with credits
     try {
-      await saveUserToBackend(userData);
+      const savedUser = await saveUserToBackend(userData);
+      // Merge backend data (credits, subscription) into local user object
+      const fullUser = { ...userData, ...savedUser };
+      saveUser(fullUser);
+      setUser(fullUser);
     } catch (err) {
       console.error('Failed to save user to backend:', err);
+      saveUser(userData);
+      setUser(userData);
     }
-    saveUser(userData);
-    setUser(userData);
   }, []);
 
   const handleLogout = useCallback(() => {
@@ -121,7 +125,7 @@ export default function App() {
       />
 
       {isPricing ? (
-        <Pricing />
+        <Pricing user={user} />
       ) : (
         <main>
           <Hero onFileSelect={handleFileSelect} />

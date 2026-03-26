@@ -139,6 +139,11 @@ export default function Header({ user, onLogin, onLogout, onShowHistory }) {
                     <div className="user-dropdown-header">
                       <span className="user-name">{user.name}</span>
                       <span className="user-email">{user.email}</span>
+                      {(user.credits !== undefined || user.credits !== null) && (
+                        <span className="user-credits">
+                          {user.is_subscription_active ? '⭐ Pro Subscriber' : `🎫 ${user.credits ?? 0} Credits`}
+                        </span>
+                      )}
                     </div>
                     <div className="user-dropdown-divider" />
                     <button className="user-dropdown-item" onClick={onShowHistory}>
@@ -366,6 +371,16 @@ export default function Header({ user, onLogin, onLogout, onShowHistory }) {
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+        }
+        .user-credits {
+          display: inline-block;
+          margin-top: 0.25rem;
+          font-size: 0.7rem;
+          font-weight: 600;
+          color: var(--color-accent-purple);
+          background: rgba(124, 58, 237, 0.15);
+          padding: 0.15rem 0.5rem;
+          border-radius: 999px;
         }
         .user-dropdown-divider {
           height: 1px;
