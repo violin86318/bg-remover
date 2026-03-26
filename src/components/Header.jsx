@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { initGoogleAuth, signOutGoogle } from '../utils/googleAuth';
 
-export default function Header({ user, onLogin, onLogout }) {
+export default function Header({ user, onLogin, onLogout, onShowHistory }) {
   const [scrolled, setScrolled] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -84,6 +84,7 @@ export default function Header({ user, onLogin, onLogout }) {
             <button onClick={() => scrollTo('features')} className="nav-link">Features</button>
             <button onClick={() => scrollTo('how-it-works')} className="nav-link">How It Works</button>
             <button onClick={() => scrollTo('faq')} className="nav-link">FAQ</button>
+            <button onClick={() => { window.location.hash = 'pricing'; }} className="nav-link">Pricing</button>
           </nav>
 
           {/* Right side: auth + theme toggle + CTA */}
@@ -140,6 +141,13 @@ export default function Header({ user, onLogin, onLogout }) {
                       <span className="user-email">{user.email}</span>
                     </div>
                     <div className="user-dropdown-divider" />
+                    <button className="user-dropdown-item" onClick={onShowHistory}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                      </svg>
+                      History
+                    </button>
                     <button className="user-dropdown-item" onClick={handleSignOut}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -168,7 +176,7 @@ export default function Header({ user, onLogin, onLogout }) {
                   Sign in
                 </button>
                 <button
-                  onClick={() => document.getElementById('hero')?.scrollIntoView({ behavior: 'smooth' })}
+                  onClick={() => { window.location.hash = ''; }}
                   className="btn btn-primary btn-sm"
                 >
                   Try Free

@@ -25,6 +25,7 @@ export default function Footer() {
               <h4>Product</h4>
               <button onClick={() => scrollTo('features')}>Features</button>
               <button onClick={() => scrollTo('how-it-works')}>How It Works</button>
+              <button onClick={() => window.location.hash = '#pricing'}>Pricing</button>
               <button onClick={() => scrollTo('faq')}>FAQ</button>
             </div>
             <div className="link-group">

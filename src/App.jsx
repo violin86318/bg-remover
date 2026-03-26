@@ -6,20 +6,33 @@ import Features from './components/Features';
 import HowItWorks from './components/HowItWorks';
 import FAQ from './components/FAQ';
 import Footer from './components/Footer';
+import HistoryModal from './components/HistoryModal';
+import Pricing from './components/Pricing';
 import { loadUser, saveUser, clearUser, saveUserToBackend } from './utils/googleAuth';
 
 export default function App() {
   const [user, setUser] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [originalPreview, setOriginalPreview] = useState(null);
   const [processedImage, setProcessedImage] = useState(null);
   const [status, setStatus] = useState('idle'); // idle | processing | done | error
   const [error, setError] = useState(null);
+  const [isPricing, setIsPricing] = useState(window.location.hash === '#pricing');
 
   // Load saved user on mount
   useEffect(() => {
     const savedUser = loadUser();
     if (savedUser) setUser(savedUser);
+  }, []);
+
+  // Hash-based routing for Pricing page
+  useEffect(() => {
+    const handleHashChange = () => {
+      setIsPricing(window.location.hash === '#pricing');
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
   const handleLogin = useCallback(async (userData) => {
@@ -36,6 +49,7 @@ export default function App() {
   const handleLogout = useCallback(() => {
     clearUser();
     setUser(null);
+    setShowHistory(false);
   }, []);
 
   const handleFileSelect = useCallback(async (file) => {
@@ -55,9 +69,16 @@ export default function App() {
       const formData = new FormData();
       formData.append('image', file);
 
+      const headers = {};
+      // Pass credential if user is logged in (for usage logging)
+      if (user?.credential) {
+        headers['Authorization'] = `Bearer ${user.credential}`;
+      }
+
       const response = await fetch('/api/remove-bg', {
         method: 'POST',
         body: formData,
+        headers,
       });
 
       if (!response.ok) {
@@ -79,7 +100,7 @@ export default function App() {
       setError(err.message || 'Something went wrong. Please try again.');
       setStatus('error');
     }
-  }, []);
+  }, [user]);
 
   const handleReset = useCallback(() => {
     setSelectedFile(null);
@@ -92,29 +113,44 @@ export default function App() {
 
   return (
     <div className="app">
-      <Header user={user} onLogin={handleLogin} onLogout={handleLogout} />
-      <main>
-        <Hero onFileSelect={handleFileSelect} />
+      <Header
+        user={user}
+        onLogin={handleLogin}
+        onLogout={handleLogout}
+        onShowHistory={() => setShowHistory(true)}
+      />
 
-        {status !== 'idle' && (
-          <ImageProcessor
-            originalPreview={originalPreview}
-            processedImage={processedImage}
-            status={status}
-            error={error}
-            onReset={handleReset}
-          />
-        )}
+      {isPricing ? (
+        <Pricing />
+      ) : (
+        <main>
+          <Hero onFileSelect={handleFileSelect} />
 
-        {status === 'idle' && (
-          <>
-            <Features />
-            <HowItWorks />
-            <FAQ />
-          </>
-        )}
-      </main>
-      <Footer />
+          {status !== 'idle' && (
+            <ImageProcessor
+              originalPreview={originalPreview}
+              processedImage={processedImage}
+              status={status}
+              error={error}
+              onReset={handleReset}
+            />
+          )}
+
+          {status === 'idle' && (
+            <>
+              <Features />
+              <HowItWorks />
+              <FAQ />
+            </>
+          )}
+        </main>
+      )}
+
+      {!isPricing && <Footer />}
+
+      {showHistory && user && (
+        <HistoryModal user={user} onClose={() => setShowHistory(false)} />
+      )}
     </div>
   );
 }
