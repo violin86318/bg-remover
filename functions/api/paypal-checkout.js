@@ -7,15 +7,6 @@
  * Returns: { orderID, approvalUrl }
  */
 
-// Use PAYPAL_MODE env var to switch between sandbox and live
-// Defaults to sandbox for safety
-function getPayPalApiBase(env) {
-  if (env.PAYPAL_MODE === 'live') {
-    return 'https://api-m.paypal.com';
-  }
-  return 'https://api-m.sandbox.paypal.com';
-}
-
 // Credit packages config (must match Pricing.jsx)
 const CREDIT_PACKAGES = {
   starter: { credits: 10,  price: 4.99,  name: 'Starter - 10 Credits' },
@@ -29,18 +20,19 @@ const SUBSCRIPTION_PLANS = {
   pro:   { credits: 60,  price: 19.99, name: 'Pro Monthly - 60 Credits' },
 };
 
-// Capture credentials from environment
-function getPayPalCredentials(env) {
-  return {
-    clientId: env.PAYPAL_CLIENT_ID,
-    clientSecret: env.PAYPAL_CLIENT_SECRET,
-  };
+// Determine API base from env
+function getPayPalApiBase(env) {
+  if (env.PAYPAL_MODE === 'live') {
+    return 'https://api-m.paypal.com';
+  }
+  return 'https://api-m.sandbox.paypal.com';
 }
 
 async function getAccessToken(clientId, clientSecret, paypalApiBase) {
   const auth = btoa(`${clientId}:${clientSecret}`);
-  console.log(`[PayPal] Attempting auth to ${paypalApiBase}`);
-  console.log(`[PayPal] Client ID prefix: ${clientId.slice(0, 8)}...`);
+  console.log(`[PayPal] Auth to: ${paypalApiBase}`);
+  console.log(`[PayPal] Client ID prefix: ${(clientId || '').slice(0, 8)}...`);
+
   const response = await fetch(`${paypalApiBase}/v1/oauth2/token`, {
     method: 'POST',
     headers: {
@@ -64,7 +56,10 @@ async function getAccessToken(clientId, clientSecret, paypalApiBase) {
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  const { clientId, clientSecret } = getPayPalCredentials(env);
+  const clientId = env.PAYPAL_CLIENT_ID;
+  const clientSecret = env.PAYPAL_CLIENT_SECRET;
+  const paypalApiBase = getPayPalApiBase(env);
+
   if (!clientId || !clientSecret) {
     return new Response(
       JSON.stringify({ error: 'SERVER_CONFIG_ERROR', message: 'PayPal not configured on server.' }),
@@ -106,7 +101,7 @@ export async function onRequestPost(context) {
   }
 
   try {
-    const accessToken = await getAccessToken(clientId, clientSecret);
+    const accessToken = await getAccessToken(clientId, clientSecret, paypalApiBase);
 
     // Create PayPal order
     const orderPayload = {
@@ -121,17 +116,16 @@ export async function onRequestPost(context) {
       }],
     };
 
-    // For subscriptions, use billing agreement
     let orderResponse;
     if (type === 'subscription') {
       // Create subscription (Billing Agreement)
       const subPayload = {
-        plan_id: `PLAN_${packageId}_${Date.now()}`, // In production, create billing plans in PayPal dashboard
+        plan_id: `PLAN_${packageId}_${Date.now()}`,
         subscriber: email ? { email_address: email } : undefined,
         custom_id: JSON.stringify({ type, packageId, email }),
       };
 
-      orderResponse = await fetch(`${PAYPAL_API_BASE}/v1/billing/subscriptions`, {
+      orderResponse = await fetch(`${paypalApiBase}/v1/billing/subscriptions`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -141,7 +135,7 @@ export async function onRequestPost(context) {
         body: JSON.stringify(subPayload),
       });
     } else {
-      orderResponse = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders`, {
+      orderResponse = await fetch(`${paypalApiBase}/v2/checkout/orders`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -162,14 +156,7 @@ export async function onRequestPost(context) {
     }
 
     const orderData = await orderResponse.json();
-
-    // Extract approval URL
-    let approvalUrl;
-    if (type === 'subscription') {
-      approvalUrl = orderData.links?.find(l => l.rel === 'approve')?.href;
-    } else {
-      approvalUrl = orderData.links?.find(l => l.rel === 'approve')?.href;
-    }
+    const approvalUrl = orderData.links?.find(l => l.rel === 'approve')?.href;
 
     return new Response(
       JSON.stringify({
